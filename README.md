@@ -35,9 +35,9 @@ redis-cli ECHO "hello world"
 
 ```
 app/
-├── main.py   # TCP server, connection handling and command dispatch
+├── main.py   # TCP server, connection handling
 ├── commands.py   # Command handlers, dispatch table and key-value store
-└── resp.py   # RESP protocol parser
+└── resp.py   # RESP protocol parser and encoder
 ```
 
 ## Roadmap
