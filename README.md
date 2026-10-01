@@ -41,8 +41,10 @@ app/
 
 ## Roadmap
 
-- [ ] `SET` / `GET`
-- [ ] Key expiry (`PX`)
-- [ ] Binary-safe parsing using bulk string lengths
-- [ ] Handle partial and pipelined messages
-- [ ] Test suite
+- [ ] `SET`, `GET`, `DEL` — shared key-value store across clients
+- [ ] Key expiry with `PX` and `TTL`
+- [ ] Atomic `INCR` — thread-safe updates under concurrent writes
+- [ ] Binary-safe RESP parsing with support for partial and pipelined messages
+- [ ] Test suite and CI with GitHub Actions
+- [ ] Append-only file (AOF) persistence and recovery on restart
+- [ ] Benchmarks against Redis
