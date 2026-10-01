@@ -1,12 +1,11 @@
 import socket
 import threading
 
-from app.resp import encode_bulk_string, parse_command
+from app.commands import COMMANDS
+from app.resp import parse_command
 
 HOST = "localhost"
 PORT = 6379
-
-redis_store = {}
 
 
 def handle_client(connection):
@@ -16,54 +15,11 @@ def handle_client(connection):
             if not data:
                 break
             command, args = parse_command(data)
-            if command == "PING":
-                connection.sendall(b"+PONG\r\n")
-            elif command == "ECHO":
-                if not args:
-                    connection.sendall(
-                        b"-ERR wrong number of arguments for 'ECHO' command\r\n"
-                    )
-                else:
-                    response = encode_bulk_string(args[0])
-                    connection.sendall(response)
-            elif command == "SET":
-                if len(args) < 2:
-                    connection.sendall(
-                        b"-ERR wrong number of arguments for 'SET' command\r\n"
-                    )
-                else:
-                    key = args[0]
-                    value = args[1]
-                    redis_store[key] = value
-                    connection.sendall(b"+OK\r\n")
-            elif command == "GET":
-                if len(args) < 1:
-                    connection.sendall(
-                        b"-ERR wrong number of arguments for 'GET' command\r\n"
-                    )
-                else:
-                    key = args[0]
-                    value = redis_store.get(key)
-                    if value is None:
-                        connection.sendall(b"$-1\r\n")
-                    else:
-                        response = encode_bulk_string(value)
-                        connection.sendall(response)
-            elif command == "DEL":
-                if len(args) < 1:
-                    connection.sendall(
-                        b"-ERR wrong number of arguments for 'DEL' command\r\n"
-                    )
-                else:
-                    deleted_count = 0
-                    for key in args:
-                        if key in redis_store:
-                            del redis_store[key]
-                            deleted_count += 1
-                    response = f":{deleted_count}\r\n".encode()
-                    connection.sendall(response)
-            else:
+            handler = COMMANDS.get(command)
+            if handler is None:
                 connection.sendall(b"-ERR unknown command\r\n")
+            else:
+                connection.sendall(handler(args))
 
 
 def run_server():
