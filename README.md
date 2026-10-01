@@ -28,7 +28,7 @@ redis-cli ECHO "hello world"
 - TCP server on port 6379
 - Concurrent clients (one thread per connection)
 - RESP parser
-- Commands: `PING`, `ECHO`
+- Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`
 - RESP error replies for unknown commands and wrong number of arguments
 
 ## Project structure
@@ -41,7 +41,7 @@ app/
 
 ## Roadmap
 
-- [ ] `SET`, `GET`, `DEL` — shared key-value store across clients
+- [x] `SET`, `GET`, `DEL` — shared key-value store across clients
 - [ ] Key expiry with `PX` and `TTL`
 - [ ] Atomic `INCR` — thread-safe updates under concurrent writes
 - [ ] Binary-safe RESP parsing with support for partial and pipelined messages
