@@ -29,18 +29,21 @@ def handle_client(connection):
             pass
 
 
-def run_server():
-    # Create a server socket and listen for incoming connections
-    server_socket = socket.create_server((HOST, PORT), reuse_port=True)
+def serve(server_socket):
     while True:
-        connection, _ = server_socket.accept()
+        try:
+            connection, _ = server_socket.accept()
+        except OSError:
+            # The server socket was closed: stop accepting clients.
+            return
         # Handle each client connection in a separate thread
         thread = threading.Thread(target=handle_client, daemon=True, args=(connection,))
         thread.start()
 
 
 def main():
-    run_server()
+    server_socket = socket.create_server((HOST, PORT), reuse_port=True)
+    serve(server_socket)
 
 
 if __name__ == "__main__":
