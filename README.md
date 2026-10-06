@@ -27,7 +27,7 @@ redis-cli ECHO "hello world"
 
 - TCP server on port 6379
 - Concurrent clients (one thread per connection)
-- RESP parser
+- Binary-safe, incremental RESP parser (handles partial and pipelined messages)
 - Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`
 - RESP error replies for unknown commands and wrong number of arguments
 
@@ -35,9 +35,9 @@ redis-cli ECHO "hello world"
 
 ```
 app/
-├── main.py   # TCP server, connection handling
+├── main.py       # TCP server and connection handling
 ├── commands.py   # Command handlers, dispatch table and key-value store
-└── resp.py   # RESP protocol parser and encoder
+└── resp.py       # RESP protocol parser and encoder
 ```
 
 ## Roadmap
@@ -45,7 +45,7 @@ app/
 - [x] `SET`, `GET`, `DEL` — shared key-value store across clients
 - [ ] Key expiry with `PX` and `TTL`
 - [ ] Atomic `INCR` — thread-safe updates under concurrent writes
-- [ ] Binary-safe RESP parsing with support for partial and pipelined messages
+- [x] Binary-safe RESP parsing with support for partial and pipelined messages
 - [ ] Test suite and CI with GitHub Actions
 - [ ] Append-only file (AOF) persistence and recovery on restart
 - [ ] Benchmarks against Redis

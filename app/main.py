@@ -1,25 +1,32 @@
 import socket
 import threading
 
-from app.commands import COMMANDS
-from app.resp import parse_command
+from app.commands import execute_command
+from app.resp import ProtocolError, RespParser, encode_error
 
 HOST = "localhost"
 PORT = 6379
 
 
 def handle_client(connection):
+    parser = RespParser()
     with connection:
-        while True:
-            data = connection.recv(1024)
-            if not data:
-                break
-            command, args = parse_command(data)
-            handler = COMMANDS.get(command)
-            if handler is None:
-                connection.sendall(b"-ERR unknown command\r\n")
-            else:
-                connection.sendall(handler(args))
+        try:
+            while True:
+                data = connection.recv(4096)
+                if not data:
+                    break
+                try:
+                    commands = parser.feed(data)
+                except ProtocolError as error:
+                    connection.sendall(encode_error(f"ERR Protocol error: {error}"))
+                    break
+                # Pipelined commands are answered in order with a single send.
+                replies = b"".join(execute_command(command) for command in commands)
+                if replies:
+                    connection.sendall(replies)
+        except ConnectionResetError:
+            pass
 
 
 def run_server():
