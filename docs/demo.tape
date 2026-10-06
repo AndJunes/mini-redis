@@ -17,7 +17,7 @@ Show
 
 Type "# start the server with persistence"
 Enter
-Type "./your_program.sh --aof demo.aof & sleep 1"
+Type "./run.sh --aof demo.aof & sleep 1"
 Enter
 Sleep 2s
 
@@ -62,7 +62,7 @@ Enter
 Type "kill -9 %1; sleep 0.5"
 Enter
 Sleep 1s
-Type "./your_program.sh --aof demo.aof & sleep 1"
+Type "./run.sh --aof demo.aof & sleep 1"
 Enter
 Sleep 2s
 Type "redis-cli GET name"

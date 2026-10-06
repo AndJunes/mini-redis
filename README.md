@@ -13,7 +13,7 @@ so it works with `redis-cli`.
 Requirements: Python 3.14+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-./your_program.sh
+./run.sh
 ```
 
 The server listens on `localhost:6379`. From another terminal:
@@ -35,7 +35,7 @@ redis-cli INCR visits
 ## Persistence
 
 ```sh
-./your_program.sh --aof appendonly.aof
+./run.sh --aof appendonly.aof
 ```
 
 Writes are appended to the file and replayed on startup. TTLs are stored as
