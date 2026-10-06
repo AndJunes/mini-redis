@@ -175,3 +175,4 @@ cython_debug/
 # mini-redis persistence files
 *.aof
 *.aof.tmp
+.DS_Store

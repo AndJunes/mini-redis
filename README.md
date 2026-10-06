@@ -6,6 +6,8 @@ A Redis-compatible server written from scratch in Python, with no dependencies.
 It speaks [RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/),
 so it works with `redis-cli`.
 
+![Demo](docs/demo.gif)
+
 ## Getting started
 
 Requirements: Python 3.14+ and [uv](https://docs.astral.sh/uv/).
