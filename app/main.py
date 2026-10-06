@@ -1,7 +1,7 @@
 import socket
 import threading
 
-from app.commands import execute_command
+from app.commands import execute_command, start_expiry_sweeper
 from app.resp import ProtocolError, RespParser, encode_error
 
 HOST = "localhost"
@@ -43,6 +43,7 @@ def serve(server_socket):
 
 def main():
     server_socket = socket.create_server((HOST, PORT), reuse_port=True)
+    start_expiry_sweeper()
     serve(server_socket)
 
 

@@ -21,8 +21,14 @@ The server listens on `localhost:6379`. From another terminal:
 redis-cli PING
 # PONG
 
-redis-cli ECHO "hello world"
-# "hello world"
+redis-cli SET session abc123 EX 10
+# OK
+
+redis-cli TTL session
+# (integer) 10
+
+redis-cli INCR visits
+# (integer) 1
 ```
 
 ## Running tests
@@ -40,7 +46,8 @@ linting, formatting checks and tests on every push.
 - TCP server on port 6379
 - Concurrent clients (one thread per connection)
 - Binary-safe, incremental RESP parser (handles partial and pipelined messages)
-- Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`, `INCR`, `DECR`
+- Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`, `INCR`, `DECR`, `TTL`, `PTTL`
+- Key expiry with `SET ... EX | PX | EXAT | PXAT`, removed lazily on access and by a background sweeper
 - Atomic command execution: concurrent `INCR`s never lose updates
 - RESP error replies for unknown commands and wrong number of arguments
 
@@ -57,7 +64,7 @@ tests/            # Unit and end-to-end tests
 ## Roadmap
 
 - [x] `SET`, `GET`, `DEL` — shared key-value store across clients
-- [ ] Key expiry with `PX` and `TTL`
+- [x] Key expiry with `PX` and `TTL`
 - [x] Atomic `INCR` — thread-safe updates under concurrent writes
 - [x] Binary-safe RESP parsing with support for partial and pipelined messages
 - [x] Test suite and CI with GitHub Actions
