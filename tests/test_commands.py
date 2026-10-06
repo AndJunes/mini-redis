@@ -1,3 +1,4 @@
+import sys
 import threading
 
 import pytest
@@ -97,11 +98,17 @@ def test_concurrent_incr_does_not_lose_updates():
         for _ in range(increments):
             run("INCR", "counter")
 
-    threads = [threading.Thread(target=worker) for _ in range(threads_count)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    # Switch threads very often, so a missing lock reliably loses updates.
+    previous_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    try:
+        threads = [threading.Thread(target=worker) for _ in range(threads_count)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    finally:
+        sys.setswitchinterval(previous_interval)
 
     expected = str(threads_count * increments)
     assert run("GET", "counter") == f"${len(expected)}\r\n{expected}\r\n".encode()

@@ -82,8 +82,9 @@ uv run python benchmarks/compare.py
 ## Design decisions
 
 - **One lock for all commands.** Commands run one at a time, like in Redis, so
-  each one is atomic. Without it, 8 threads doing 16,000 `INCR`s lost about
-  two thirds of the updates.
+  each one is atomic. With the lock removed and Python forced to switch threads
+  every microsecond, 8 threads doing 16,000 `INCR`s lost about two thirds of
+  the updates.
 - **Thread per client.** Simple and enough for this scale. Python's GIL means
   an event loop wouldn't run commands in parallel either.
 - **The AOF stores state, not commands.** `SET k v EX 60` is logged as
