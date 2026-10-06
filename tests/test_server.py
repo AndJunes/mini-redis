@@ -1,5 +1,3 @@
-"""End-to-end tests that talk to a real server over TCP."""
-
 import socket
 import threading
 
@@ -75,7 +73,6 @@ def test_concurrent_incr_over_tcp(server_address):
 
     def worker():
         with socket.create_connection(server_address, timeout=5) as connection:
-            # Pipeline all increments, then read every reply.
             connection.sendall(incr * increments)
             replies = b""
             while replies.count(b"\r\n") < increments:

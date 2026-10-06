@@ -1,7 +1,9 @@
+import argparse
 import socket
 import threading
 
-from app.commands import execute_command, start_expiry_sweeper
+from app.commands import enable_aof, execute_command, start_expiry_sweeper
+from app.persistence import FSYNC_POLICIES
 from app.resp import ProtocolError, RespParser, encode_error
 
 HOST = "localhost"
@@ -21,7 +23,6 @@ def handle_client(connection):
                 except ProtocolError as error:
                     connection.sendall(encode_error(f"ERR Protocol error: {error}"))
                     break
-                # Pipelined commands are answered in order with a single send.
                 replies = b"".join(execute_command(command) for command in commands)
                 if replies:
                     connection.sendall(replies)
@@ -34,16 +35,39 @@ def serve(server_socket):
         try:
             connection, _ = server_socket.accept()
         except OSError:
-            # The server socket was closed: stop accepting clients.
             return
         # Handle each client connection in a separate thread
         thread = threading.Thread(target=handle_client, daemon=True, args=(connection,))
         thread.start()
 
 
-def main():
-    server_socket = socket.create_server((HOST, PORT), reuse_port=True)
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="A Redis-compatible server.")
+    parser.add_argument(
+        "--port", type=int, default=PORT, help=f"port to listen on (default: {PORT})"
+    )
+    parser.add_argument(
+        "--aof", metavar="FILE", help="enable append-only file persistence"
+    )
+    parser.add_argument(
+        "--appendfsync",
+        choices=FSYNC_POLICIES,
+        default="everysec",
+        help="how often the AOF is synced to disk (default: everysec)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    if args.aof:
+        restored, truncated = enable_aof(args.aof, args.appendfsync)
+        if truncated:
+            print(f"Ignored an incomplete command at the end of {args.aof}")
+        print(f"Restored {restored} keys from {args.aof}", flush=True)
+    server_socket = socket.create_server((HOST, args.port), reuse_port=True)
     start_expiry_sweeper()
+    print(f"Listening on {HOST}:{args.port}", flush=True)
     serve(server_socket)
 
 

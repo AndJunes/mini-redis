@@ -2,10 +2,9 @@
 
 [![CI](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml/badge.svg)](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml)
 
-A Redis-compatible server written from scratch in Python, with no third-party dependencies.
-
-It speaks the [RESP protocol](https://redis.io/docs/latest/develop/reference/protocol-spec/),
-so it works with standard clients like `redis-cli`.
+A Redis-compatible server written from scratch in Python, with no dependencies.
+It speaks [RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/),
+so it works with `redis-cli`.
 
 ## Getting started
 
@@ -31,42 +30,48 @@ redis-cli INCR visits
 # (integer) 1
 ```
 
+## Persistence
+
+```sh
+./your_program.sh --aof appendonly.aof
+```
+
+Writes are appended to the file and replayed on startup. TTLs are stored as
+absolute timestamps, so keys still expire on time after a restart. Use
+`--appendfsync always|everysec|no` to choose how often it syncs to disk.
+
 ## Running tests
 
 ```sh
 uv run pytest
 ```
 
-The suite covers the RESP parser, every command, and end-to-end behavior over
-real TCP connections (partial packets, pipelining, concurrent clients). CI runs
-linting, formatting checks and tests on every push.
-
 ## Features
 
-- TCP server on port 6379
-- Concurrent clients (one thread per connection)
-- Binary-safe, incremental RESP parser (handles partial and pipelined messages)
 - Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`, `INCR`, `DECR`, `TTL`, `PTTL`
-- Key expiry with `SET ... EX | PX | EXAT | PXAT`, removed lazily on access and by a background sweeper
-- Atomic command execution: concurrent `INCR`s never lose updates
-- RESP error replies for unknown commands and wrong number of arguments
+- Concurrent clients, one thread per connection
+- Atomic commands: concurrent `INCR`s never lose updates
+- Binary-safe RESP parser with support for pipelining
+- Key expiry (`EX`, `PX`, `EXAT`, `PXAT`)
+- Append-only file persistence with crash recovery
 
 ## Project structure
 
 ```
 app/
-├── main.py       # TCP server and connection handling
-├── commands.py   # Command handlers, dispatch table and key-value store
-└── resp.py       # RESP protocol parser and encoder
-tests/            # Unit and end-to-end tests
+├── main.py         # TCP server and CLI options
+├── commands.py     # Commands and key-value store
+├── persistence.py  # Append-only file
+└── resp.py         # RESP parser and encoder
+tests/
 ```
 
 ## Roadmap
 
-- [x] `SET`, `GET`, `DEL` — shared key-value store across clients
-- [x] Key expiry with `PX` and `TTL`
-- [x] Atomic `INCR` — thread-safe updates under concurrent writes
-- [x] Binary-safe RESP parsing with support for partial and pipelined messages
-- [x] Test suite and CI with GitHub Actions
-- [ ] Append-only file (AOF) persistence and recovery on restart
+- [x] `SET`, `GET`, `DEL`
+- [x] Key expiry and `TTL`
+- [x] Atomic `INCR`
+- [x] Binary-safe RESP parsing
+- [x] Tests and CI
+- [x] AOF persistence
 - [ ] Benchmarks against Redis

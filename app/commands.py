@@ -1,6 +1,7 @@
 import threading
 import time
 
+from app import persistence
 from app.resp import (
     encode_bulk_string,
     encode_error,
@@ -9,14 +10,12 @@ from app.resp import (
 )
 
 redis_store = {}
-# Absolute expiry time (Unix milliseconds) for keys that have a TTL. Kept in a
-# separate dict, as Redis does, so keys without a TTL cost nothing extra.
-expirations = {}
+expirations = {}  # key -> expiry time in Unix ms
 
-# Commands run one at a time, like Redis's single-threaded executor. Each
-# client has its own thread, so without this lock a read-modify-write such as
-# INCR (or DEL's check-then-delete) could interleave with another client's.
+# One command at a time, like Redis, so INCR and DEL can't interleave.
 store_lock = threading.Lock()
+
+aof = None
 
 MIN_INT64 = -(2**63)
 MAX_INT64 = 2**63 - 1
@@ -37,18 +36,12 @@ def is_expired(key):
 
 
 def get_value(key):
-    """Return the value for key, deleting it first if it has expired.
-
-    This is lazy (passive) expiry: an expired key is removed the moment a
-    command touches it. delete_expired_keys() handles keys nobody reads.
-    """
     if is_expired(key):
         delete_key(key)
     return redis_store.get(key)
 
 
 def delete_expired_keys():
-    """Active expiry: remove every key whose TTL has passed."""
     with store_lock:
         now = now_ms()
         for key in [key for key, at in expirations.items() if at <= now]:
@@ -56,7 +49,6 @@ def delete_expired_keys():
 
 
 def start_expiry_sweeper(interval=0.1):
-    """Run active expiry in the background. Set the returned event to stop."""
     stop = threading.Event()
 
     def sweep():
@@ -81,8 +73,6 @@ def handle_echo(args):
     return encode_bulk_string(args[0])
 
 
-# SET options that set a TTL, mapped to "how to turn the number into an
-# absolute Unix time in milliseconds".
 EXPIRY_OPTIONS = {
     "EX": lambda seconds: now_ms() + seconds * 1000,
     "PX": lambda milliseconds: now_ms() + milliseconds,
@@ -112,7 +102,6 @@ def handle_set(args):
         expires_at = EXPIRY_OPTIONS[option](amount)
 
     redis_store[key] = value
-    # A plain SET discards any previous TTL, as in Redis.
     if expires_at is None:
         expirations.pop(key, None)
     else:
@@ -138,7 +127,6 @@ def handle_del(args):
 
 
 def remaining_ttl_ms(key):
-    """Milliseconds left, -1 if the key has no TTL, -2 if it does not exist."""
     if get_value(key) is None:
         return -2
     expires_at = expirations.get(key)
@@ -151,7 +139,6 @@ def handle_ttl(args):
     if len(args) != 1:
         return wrong_number_of_arguments("ttl")
     ttl = remaining_ttl_ms(args[0])
-    # Round to the nearest second, like Redis.
     return encode_integer(ttl if ttl < 0 else (ttl + 500) // 1000)
 
 
@@ -169,8 +156,7 @@ def increment(key, amount):
         number = int(current)
     except ValueError:
         number = None
-    # int() accepts things like b" 7" or b"+7"; Redis only accepts the
-    # canonical form, so the value must round-trip exactly.
+    # int() accepts " 7" and "+7", Redis doesn't
     if number is None or str(number).encode() != current:
         return encode_error("ERR value is not an integer or out of range")
     result = number + amount
@@ -205,11 +191,57 @@ COMMANDS = {
 }
 
 
+WRITE_COMMANDS = {"SET", "DEL", "INCR", "DECR"}
+
+
+# Log the resulting state with an absolute TTL instead of the original
+# command, so replaying "SET k v EX 60" later doesn't give the key a new minute.
+def state_record(key):
+    value = get_value(key)
+    if value is None:
+        return [b"DEL", key]
+    record = [b"SET", key, value]
+    if key in expirations:
+        record += [b"PXAT", str(expirations[key]).encode()]
+    return record
+
+
+def log_write(name, args, reply):
+    if aof is None or name not in WRITE_COMMANDS or reply.startswith(b"-"):
+        return
+    if name == "DEL":
+        if reply != b":0\r\n":
+            aof.append([b"DEL", *args])
+    else:
+        aof.append(state_record(args[0]))
+
+
 def execute_command(parts):
-    """Run a parsed command (a list of bytes) and return the RESP reply."""
     name = parts[0].decode(errors="replace").upper()
     handler = COMMANDS.get(name)
     if handler is None:
         return encode_error(f"ERR unknown command '{name.lower()}'")
     with store_lock:
-        return handler(parts[1:])
+        reply = handler(parts[1:])
+        log_write(name, parts[1:], reply)
+        return reply
+
+
+def enable_aof(path, fsync="everysec"):
+    global aof
+    commands, truncated = persistence.read_commands(path)
+    for parts in commands:
+        execute_command(parts)
+    with store_lock:
+        snapshot = [state_record(key) for key in list(redis_store)]
+        snapshot = [record for record in snapshot if record[0] == b"SET"]
+        persistence.write_snapshot(path, snapshot)
+        aof = persistence.AppendOnlyFile(path, fsync)
+    return len(snapshot), truncated
+
+
+def disable_aof():
+    global aof
+    if aof is not None:
+        aof.close()
+        aof = None

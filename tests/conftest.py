@@ -12,6 +12,7 @@ def empty_store():
     commands.redis_store.clear()
     commands.expirations.clear()
     yield
+    commands.disable_aof()
     commands.redis_store.clear()
     commands.expirations.clear()
 
@@ -26,7 +27,6 @@ class FakeClock:
 
 @pytest.fixture
 def clock(monkeypatch):
-    """Replace the server's clock so tests can move time forward instantly."""
     fake = FakeClock()
     monkeypatch.setattr(commands, "now_ms", lambda: fake.now)
     return fake
@@ -34,7 +34,6 @@ def clock(monkeypatch):
 
 @pytest.fixture
 def server_address():
-    """Start a real server on a free port and return its (host, port)."""
     server_socket = socket.create_server(("localhost", 0))
     threading.Thread(target=serve, args=(server_socket,), daemon=True).start()
     yield server_socket.getsockname()[:2]
