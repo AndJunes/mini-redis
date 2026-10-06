@@ -1,6 +1,7 @@
 """End-to-end tests that talk to a real server over TCP."""
 
 import socket
+import threading
 
 import pytest
 
@@ -66,3 +67,26 @@ def test_protocol_error_closes_the_connection(client):
     reply = client.recv(4096)
     assert reply.startswith(b"-ERR Protocol error")
     assert client.recv(4096) == b""
+
+
+def test_concurrent_incr_over_tcp(server_address):
+    clients_count, increments = 10, 100
+    incr = b"*2\r\n$4\r\nINCR\r\n$7\r\ncounter\r\n"
+
+    def worker():
+        with socket.create_connection(server_address, timeout=5) as connection:
+            # Pipeline all increments, then read every reply.
+            connection.sendall(incr * increments)
+            replies = b""
+            while replies.count(b"\r\n") < increments:
+                replies += connection.recv(4096)
+
+    threads = [threading.Thread(target=worker) for _ in range(clients_count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    with socket.create_connection(server_address, timeout=2) as connection:
+        connection.sendall(b"*2\r\n$3\r\nGET\r\n$7\r\ncounter\r\n")
+        assert receive(connection, b"$4\r\n1000\r\n") == b"$4\r\n1000\r\n"

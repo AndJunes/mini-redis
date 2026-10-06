@@ -40,7 +40,8 @@ linting, formatting checks and tests on every push.
 - TCP server on port 6379
 - Concurrent clients (one thread per connection)
 - Binary-safe, incremental RESP parser (handles partial and pipelined messages)
-- Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`
+- Commands: `PING`, `ECHO`, `SET`, `GET`, `DEL`, `INCR`, `DECR`
+- Atomic command execution: concurrent `INCR`s never lose updates
 - RESP error replies for unknown commands and wrong number of arguments
 
 ## Project structure
@@ -57,7 +58,7 @@ tests/            # Unit and end-to-end tests
 
 - [x] `SET`, `GET`, `DEL` — shared key-value store across clients
 - [ ] Key expiry with `PX` and `TTL`
-- [ ] Atomic `INCR` — thread-safe updates under concurrent writes
+- [x] Atomic `INCR` — thread-safe updates under concurrent writes
 - [x] Binary-safe RESP parsing with support for partial and pipelined messages
 - [x] Test suite and CI with GitHub Actions
 - [ ] Append-only file (AOF) persistence and recovery on restart
