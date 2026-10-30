@@ -5,10 +5,10 @@ import time
 
 import pytest
 
-from app import commands
-from app.commands import disable_aof, enable_aof, execute_command
-from app.persistence import read_commands
-from app.resp import ProtocolError
+from mini_redis import commands
+from mini_redis.commands import disable_aof, enable_aof, execute_command
+from mini_redis.persistence import read_commands
+from mini_redis.resp import ProtocolError
 
 
 def run(*parts):
@@ -142,7 +142,15 @@ def send(port, command):
 
 def start_server(port, aof_path):
     process = subprocess.Popen(
-        [sys.executable, "-m", "app.main", "--port", str(port), "--aof", aof_path],
+        [
+            sys.executable,
+            "-m",
+            "mini_redis.main",
+            "--port",
+            str(port),
+            "--aof",
+            aof_path,
+        ],
         stdout=subprocess.DEVNULL,
     )
     deadline = time.monotonic() + 5

@@ -1,6 +1,6 @@
 import pytest
 
-from app.resp import (
+from mini_redis.resp import (
     ProtocolError,
     RespParser,
     encode_bulk_string,

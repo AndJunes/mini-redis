@@ -7,7 +7,7 @@ import time
 
 TESTS = "ping_mbulk,set,get"
 SERVERS = {
-    "mini-redis": (6380, [sys.executable, "-m", "app.main", "--port", "6380"]),
+    "mini-redis": (6380, [sys.executable, "-m", "mini_redis.main", "--port", "6380"]),
     "Redis": (
         6381,
         ["redis-server", "--port", "6381", "--save", "", "--appendonly", "no"],
