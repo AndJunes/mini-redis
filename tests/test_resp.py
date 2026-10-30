@@ -70,6 +70,24 @@ def test_rejects_invalid_input(data):
         RespParser().feed(data)
 
 
+def test_rejects_an_oversized_value_length():
+    # Declares a 512 MB + 1 value; the parser must refuse before buffering it.
+    with pytest.raises(ProtocolError):
+        RespParser().feed(b"*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$536870913\r\n")
+
+
+def test_rejects_an_oversized_element_count():
+    with pytest.raises(ProtocolError):
+        RespParser().feed(b"*1048577\r\n")
+
+
+def test_rejects_an_endless_header_line():
+    parser = RespParser()
+    with pytest.raises(ProtocolError):
+        for _ in range(20):
+            parser.feed(b"x" * 4096)  # no CRLF ever arrives
+
+
 def test_encoders():
     assert encode_simple_string("OK") == b"+OK\r\n"
     assert encode_error("ERR boom") == b"-ERR boom\r\n"
