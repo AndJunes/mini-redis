@@ -1,7 +1,7 @@
 import os
 import threading
 
-from app.resp import RespParser, encode_command
+from mini_redis.resp import RespParser, encode_command
 
 FSYNC_POLICIES = ("always", "everysec", "no")
 

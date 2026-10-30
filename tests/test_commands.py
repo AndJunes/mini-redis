@@ -3,7 +3,7 @@ import threading
 
 import pytest
 
-from app.commands import execute_command
+from mini_redis.commands import execute_command
 
 
 def run(*parts):

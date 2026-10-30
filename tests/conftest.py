@@ -3,8 +3,8 @@ import threading
 
 import pytest
 
-from app import commands
-from app.main import serve
+from mini_redis import commands
+from mini_redis.main import serve
 
 
 @pytest.fixture(autouse=True)

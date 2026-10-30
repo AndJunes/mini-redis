@@ -1,8 +1,8 @@
 import threading
 import time
 
-from app import persistence
-from app.resp import (
+from mini_redis import persistence
+from mini_redis.resp import (
     encode_bulk_string,
     encode_error,
     encode_integer,

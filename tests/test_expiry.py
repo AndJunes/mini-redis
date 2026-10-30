@@ -2,8 +2,8 @@ import time
 
 import pytest
 
-from app import commands
-from app.commands import execute_command
+from mini_redis import commands
+from mini_redis.commands import execute_command
 
 
 def run(*parts):

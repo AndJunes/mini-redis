@@ -2,9 +2,9 @@ import argparse
 import socket
 import threading
 
-from app.commands import enable_aof, execute_command, start_expiry_sweeper
-from app.persistence import FSYNC_POLICIES
-from app.resp import ProtocolError, RespParser, encode_error
+from mini_redis.commands import enable_aof, execute_command, start_expiry_sweeper
+from mini_redis.persistence import FSYNC_POLICIES
+from mini_redis.resp import ProtocolError, RespParser, encode_error
 
 HOST = "localhost"
 PORT = 6379

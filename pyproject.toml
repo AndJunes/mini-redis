@@ -21,6 +21,13 @@ classifiers = [
 Repository = "https://github.com/AndJunes/mini-redis"
 Issues = "https://github.com/AndJunes/mini-redis/issues"
 
+[project.scripts]
+mini-redis = "mini_redis.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
@@ -29,7 +36,6 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
 
 [tool.ruff.lint]
 extend-select = ["I", "B", "UP"]

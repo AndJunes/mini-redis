@@ -104,7 +104,7 @@ uv run python benchmarks/compare.py
 ## Project structure
 
 ```
-app/
+mini_redis/
 ├── main.py         # TCP server and CLI options
 ├── commands.py     # Commands and key-value store
 ├── persistence.py  # Append-only file
