@@ -3,41 +3,35 @@ import threading
 
 import pytest
 
-from mini_redis.commands import execute_command
 
-
-def run(*parts):
-    return execute_command([part.encode() for part in parts])
-
-
-def test_ping():
+def test_ping(run):
     assert run("PING") == b"+PONG\r\n"
 
 
-def test_command_names_are_case_insensitive():
+def test_command_names_are_case_insensitive(run):
     assert run("ping") == b"+PONG\r\n"
 
 
-def test_echo():
+def test_echo(run):
     assert run("ECHO", "hello") == b"$5\r\nhello\r\n"
 
 
-def test_set_and_get():
+def test_set_and_get(run):
     assert run("SET", "name", "Andrea") == b"+OK\r\n"
     assert run("GET", "name") == b"$6\r\nAndrea\r\n"
 
 
-def test_set_overwrites():
+def test_set_overwrites(run):
     run("SET", "name", "Andrea")
     run("SET", "name", "Ana")
     assert run("GET", "name") == b"$3\r\nAna\r\n"
 
 
-def test_get_missing_key_returns_null():
+def test_get_missing_key_returns_null(run):
     assert run("GET", "missing") == b"$-1\r\n"
 
 
-def test_del_returns_number_of_deleted_keys():
+def test_del_returns_number_of_deleted_keys(run):
     run("SET", "a", "1")
     run("SET", "b", "2")
     assert run("DEL", "a", "b", "c") == b":2\r\n"
@@ -45,7 +39,7 @@ def test_del_returns_number_of_deleted_keys():
     assert run("DEL", "a") == b":0\r\n"
 
 
-def test_unknown_command():
+def test_unknown_command(run):
     assert run("FOO") == b"-ERR unknown command 'foo'\r\n"
 
 
@@ -61,37 +55,37 @@ def test_unknown_command():
         (["DECR", "a", "b"], "decr"),
     ],
 )
-def test_wrong_number_of_arguments(parts, name):
+def test_wrong_number_of_arguments(run, parts, name):
     expected = f"-ERR wrong number of arguments for '{name}' command\r\n"
     assert run(*parts) == expected.encode()
 
 
-def test_incr_creates_missing_keys_at_zero():
+def test_incr_creates_missing_keys_at_zero(run):
     assert run("INCR", "counter") == b":1\r\n"
     assert run("INCR", "counter") == b":2\r\n"
     assert run("GET", "counter") == b"$1\r\n2\r\n"
 
 
-def test_decr():
+def test_decr(run):
     run("SET", "counter", "10")
     assert run("DECR", "counter") == b":9\r\n"
     assert run("DECR", "missing") == b":-1\r\n"
 
 
 @pytest.mark.parametrize("value", ["abc", " 7", "+7", "07", "1.5", ""])
-def test_incr_rejects_non_integers(value):
+def test_incr_rejects_non_integers(run, value):
     run("SET", "key", value)
     assert run("INCR", "key") == b"-ERR value is not an integer or out of range\r\n"
 
 
-def test_incr_overflow():
+def test_incr_overflow(run):
     run("SET", "key", str(2**63 - 1))
     assert run("INCR", "key") == b"-ERR increment or decrement would overflow\r\n"
     run("SET", "key", str(-(2**63)))
     assert run("DECR", "key") == b"-ERR increment or decrement would overflow\r\n"
 
 
-def test_concurrent_incr_does_not_lose_updates():
+def test_concurrent_incr_does_not_lose_updates(run):
     threads_count, increments = 8, 500
 
     def worker():
