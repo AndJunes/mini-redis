@@ -1,8 +1,25 @@
 [project]
 name = "mini-redis"
 version = "0.1.0"
+description = "Redis-compatible key-value server in pure Python — RESP protocol, TTL expiry, AOF persistence"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Andrea Junes" }]
 requires-python = ">=3.14"
 dependencies = []
+keywords = ["redis", "resp", "key-value", "database", "cache"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+]
+
+[project.urls]
+Repository = "https://github.com/AndJunes/mini-redis"
+Issues = "https://github.com/AndJunes/mini-redis/issues"
 
 [dependency-groups]
 dev = [
