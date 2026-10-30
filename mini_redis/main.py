@@ -1,4 +1,5 @@
 import argparse
+import signal
 import socket
 import threading
 
@@ -71,9 +72,20 @@ def main(argv=None):
             print(f"Ignored an incomplete command at the end of {args.aof}")
         print(f"Restored {restored} keys from {args.aof}", flush=True)
     server_socket = socket.create_server((HOST, args.port), reuse_port=True)
-    database.start_expiry_sweeper()
+
+    # Closing the socket unblocks accept(), so serve() returns and the AOF
+    # can be flushed before the process exits.
+    def shut_down(signum, frame):
+        server_socket.close()
+
+    signal.signal(signal.SIGINT, shut_down)
+    signal.signal(signal.SIGTERM, shut_down)
+
+    stop_sweeper = database.start_expiry_sweeper()
     print(f"Listening on {HOST}:{args.port}", flush=True)
     serve(server_socket, database)
+    stop_sweeper.set()
+    database.disable_aof()
 
 
 if __name__ == "__main__":

@@ -185,3 +185,22 @@ def test_real_server_restores_data_after_being_killed(aof_path):
     finally:
         server.kill()
         server.wait()
+
+
+def test_sigterm_shuts_down_cleanly_and_flushes_the_aof(aof_path):
+    port = free_port()
+    server = start_server(port, aof_path)
+    try:
+        assert send(port, b"*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$6\r\nAndrea\r\n") == (
+            b"+OK\r\n"
+        )
+    finally:
+        server.terminate()
+    assert server.wait(timeout=5) == 0  # clean exit, not the default signal death
+
+    server = start_server(port, aof_path)
+    try:
+        assert send(port, b"*2\r\n$3\r\nGET\r\n$4\r\nname\r\n") == b"$6\r\nAndrea\r\n"
+    finally:
+        server.kill()
+        server.wait()

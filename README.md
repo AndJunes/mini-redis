@@ -57,6 +57,7 @@ uv run pytest
 - Binary-safe RESP parser with support for pipelining
 - Key expiry (`EX`, `PX`, `EXAT`, `PXAT`)
 - Append-only file persistence with crash recovery
+- Clean shutdown: `SIGINT`/`SIGTERM` stop the server and fsync the AOF
 
 ## Benchmarks
 
