@@ -1,6 +1,7 @@
 # mini-redis
 
 [![CI](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml/badge.svg)](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/AndJunes/mini-redis)](LICENSE)
 
 A Redis-compatible server written from scratch in Python, with no dependencies.
 It speaks [RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/),
@@ -111,3 +112,9 @@ app/
 benchmarks/         # Comparison with Redis
 tests/
 ```
+
+---
+
+*Started as the [CodeCrafters "Build your own Redis" challenge](https://codecrafters.io/challenges/redis);
+key expiry, AOF persistence, the test suite and the benchmarks go beyond the
+challenge scope.*
