@@ -4,17 +4,23 @@ import threading
 import pytest
 
 from mini_redis import commands
+from mini_redis.commands import Database
 from mini_redis.main import serve
 
 
-@pytest.fixture(autouse=True)
-def empty_store():
-    commands.redis_store.clear()
-    commands.expirations.clear()
-    yield
-    commands.disable_aof()
-    commands.redis_store.clear()
-    commands.expirations.clear()
+@pytest.fixture
+def database():
+    database = Database()
+    yield database
+    database.disable_aof()
+
+
+@pytest.fixture
+def run(database):
+    def run(*parts):
+        return database.execute_command([str(part).encode() for part in parts])
+
+    return run
 
 
 class FakeClock:
@@ -33,8 +39,8 @@ def clock(monkeypatch):
 
 
 @pytest.fixture
-def server_address():
+def server_address(database):
     server_socket = socket.create_server(("localhost", 0))
-    threading.Thread(target=serve, args=(server_socket,), daemon=True).start()
+    threading.Thread(target=serve, args=(server_socket, database), daemon=True).start()
     yield server_socket.getsockname()[:2]
     server_socket.close()

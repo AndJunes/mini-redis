@@ -5,21 +5,8 @@ import time
 
 import pytest
 
-from mini_redis import commands
-from mini_redis.commands import disable_aof, enable_aof, execute_command
 from mini_redis.persistence import read_commands
 from mini_redis.resp import ProtocolError
-
-
-def run(*parts):
-    return execute_command([str(part).encode() for part in parts])
-
-
-def restart(path):
-    disable_aof()
-    commands.redis_store.clear()
-    commands.expirations.clear()
-    return enable_aof(path)
 
 
 @pytest.fixture
@@ -27,8 +14,19 @@ def aof_path(tmp_path):
     return str(tmp_path / "appendonly.aof")
 
 
-def test_writes_survive_a_restart(aof_path):
-    enable_aof(aof_path)
+@pytest.fixture
+def restart(database):
+    def restart(path):
+        database.disable_aof()
+        database.store.clear()
+        database.expirations.clear()
+        return database.enable_aof(path)
+
+    return restart
+
+
+def test_writes_survive_a_restart(aof_path, database, run, restart):
+    database.enable_aof(aof_path)
     run("SET", "name", "Andrea")
     run("SET", "city", "Córdoba")
     run("DEL", "city")
@@ -41,23 +39,25 @@ def test_writes_survive_a_restart(aof_path):
     assert run("GET", "visits") == b"$1\r\n2\r\n"
 
 
-def test_binary_values_survive_a_restart(aof_path):
-    enable_aof(aof_path)
-    execute_command([b"SET", b"blob", b"\x00\xff\r\n\x01"])
+def test_binary_values_survive_a_restart(aof_path, database, restart):
+    database.enable_aof(aof_path)
+    database.execute_command([b"SET", b"blob", b"\x00\xff\r\n\x01"])
     restart(aof_path)
-    assert execute_command([b"GET", b"blob"]) == b"$5\r\n\x00\xff\r\n\x01\r\n"
+    assert database.execute_command([b"GET", b"blob"]) == b"$5\r\n\x00\xff\r\n\x01\r\n"
 
 
-def test_relative_ttl_is_logged_as_absolute_time(aof_path, clock):
-    enable_aof(aof_path)
+def test_relative_ttl_is_logged_as_absolute_time(aof_path, database, run, clock):
+    database.enable_aof(aof_path)
     run("SET", "session", "abc", "EX", 60)
     logged, _ = read_commands(aof_path)
     expected_at = str(clock.now + 60_000).encode()
     assert logged == [[b"SET", b"session", b"abc", b"PXAT", expected_at]]
 
 
-def test_ttl_keeps_counting_while_the_server_is_down(aof_path, clock):
-    enable_aof(aof_path)
+def test_ttl_keeps_counting_while_the_server_is_down(
+    aof_path, database, run, restart, clock
+):
+    database.enable_aof(aof_path)
     run("SET", "session", "abc", "EX", 60)
     clock.advance(30_000)
     restart(aof_path)
@@ -66,8 +66,10 @@ def test_ttl_keeps_counting_while_the_server_is_down(aof_path, clock):
     assert run("GET", "session") == b"$-1\r\n"
 
 
-def test_keys_that_expired_while_down_are_not_restored(aof_path, clock):
-    enable_aof(aof_path)
+def test_keys_that_expired_while_down_are_not_restored(
+    aof_path, database, run, restart, clock
+):
+    database.enable_aof(aof_path)
     run("SET", "session", "abc", "PX", 100)
     run("SET", "name", "Andrea")
     clock.advance(100)
@@ -75,8 +77,10 @@ def test_keys_that_expired_while_down_are_not_restored(aof_path, clock):
     assert run("GET", "session") == b"$-1\r\n"
 
 
-def test_incr_on_a_key_with_ttl_is_replayed_correctly(aof_path, clock):
-    enable_aof(aof_path)
+def test_incr_on_a_key_with_ttl_is_replayed_correctly(
+    aof_path, database, run, restart, clock
+):
+    database.enable_aof(aof_path)
     run("SET", "counter", "41", "PX", 100)
     clock.advance(100)
     run("INCR", "counter")  # the old key had expired, so this starts from 0
@@ -86,8 +90,8 @@ def test_incr_on_a_key_with_ttl_is_replayed_correctly(aof_path, clock):
     assert run("TTL", "counter") == b":-1\r\n"
 
 
-def test_failed_and_read_only_commands_are_not_logged(aof_path):
-    enable_aof(aof_path)
+def test_failed_and_read_only_commands_are_not_logged(aof_path, database, run):
+    database.enable_aof(aof_path)
     run("GET", "missing")
     run("PING")
     run("SET", "key")
@@ -98,8 +102,8 @@ def test_failed_and_read_only_commands_are_not_logged(aof_path):
     assert logged == [[b"SET", b"text", b"abc"]]
 
 
-def test_file_is_compacted_on_startup(aof_path):
-    enable_aof(aof_path)
+def test_file_is_compacted_on_startup(aof_path, database, run, restart):
+    database.enable_aof(aof_path)
     for number in range(100):
         run("SET", "counter", number)
     run("SET", "temp", "x")
@@ -109,10 +113,10 @@ def test_file_is_compacted_on_startup(aof_path):
     assert logged == [[b"SET", b"counter", b"99"]]
 
 
-def test_truncated_tail_is_ignored(aof_path):
-    enable_aof(aof_path)
+def test_truncated_tail_is_ignored(aof_path, database, run, restart):
+    database.enable_aof(aof_path)
     run("SET", "name", "Andrea")
-    disable_aof()
+    database.disable_aof()
     with open(aof_path, "ab") as file:
         file.write(b"*3\r\n$3\r\nSET\r\n$3\r\nage")  # crash mid-write
     assert restart(aof_path) == (1, True)
@@ -121,11 +125,11 @@ def test_truncated_tail_is_ignored(aof_path):
     assert restart(aof_path) == (2, False)
 
 
-def test_corrupt_file_refuses_to_load(aof_path):
+def test_corrupt_file_refuses_to_load(aof_path, database):
     with open(aof_path, "wb") as file:
         file.write(b"this is not RESP\r\n")
     with pytest.raises(ProtocolError):
-        enable_aof(aof_path)
+        database.enable_aof(aof_path)
 
 
 def free_port():

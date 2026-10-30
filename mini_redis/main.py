@@ -2,7 +2,7 @@ import argparse
 import socket
 import threading
 
-from mini_redis.commands import enable_aof, execute_command, start_expiry_sweeper
+from mini_redis.commands import Database
 from mini_redis.persistence import FSYNC_POLICIES
 from mini_redis.resp import ProtocolError, RespParser, encode_error
 
@@ -10,7 +10,7 @@ HOST = "localhost"
 PORT = 6379
 
 
-def handle_client(connection):
+def handle_client(connection, database):
     parser = RespParser()
     with connection:
         try:
@@ -23,21 +23,25 @@ def handle_client(connection):
                 except ProtocolError as error:
                     connection.sendall(encode_error(f"ERR Protocol error: {error}"))
                     break
-                replies = b"".join(execute_command(command) for command in commands)
+                replies = b"".join(
+                    database.execute_command(command) for command in commands
+                )
                 if replies:
                     connection.sendall(replies)
         except ConnectionResetError:
             pass
 
 
-def serve(server_socket):
+def serve(server_socket, database):
     while True:
         try:
             connection, _ = server_socket.accept()
         except OSError:
             return
         # Handle each client connection in a separate thread
-        thread = threading.Thread(target=handle_client, daemon=True, args=(connection,))
+        thread = threading.Thread(
+            target=handle_client, daemon=True, args=(connection, database)
+        )
         thread.start()
 
 
@@ -60,15 +64,16 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
+    database = Database()
     if args.aof:
-        restored, truncated = enable_aof(args.aof, args.appendfsync)
+        restored, truncated = database.enable_aof(args.aof, args.appendfsync)
         if truncated:
             print(f"Ignored an incomplete command at the end of {args.aof}")
         print(f"Restored {restored} keys from {args.aof}", flush=True)
     server_socket = socket.create_server((HOST, args.port), reuse_port=True)
-    start_expiry_sweeper()
+    database.start_expiry_sweeper()
     print(f"Listening on {HOST}:{args.port}", flush=True)
-    serve(server_socket)
+    serve(server_socket, database)
 
 
 if __name__ == "__main__":
