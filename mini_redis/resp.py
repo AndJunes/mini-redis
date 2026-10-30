@@ -2,6 +2,15 @@ class ProtocolError(Exception):
     pass
 
 
+# Caps match Redis, so a bad or hostile length can't balloon the buffer:
+# 1M elements per command and 512 MB per value (proto-max-bulk-len).
+MAX_ARRAY_LENGTH = 1024 * 1024
+MAX_BULK_LENGTH = 512 * 1024 * 1024
+
+# A header line ("*3", "$1024") never comes close to this.
+MAX_LINE_LENGTH = 64 * 1024
+
+
 # Buffers input, since a recv() can hold half a command or several of them.
 class RespParser:
     def __init__(self):
@@ -24,6 +33,8 @@ class RespParser:
         count = self._parse_length(line[1:])
         if count == 0:
             raise ProtocolError("empty command")
+        if count > MAX_ARRAY_LENGTH:
+            raise ProtocolError("invalid multibulk length")
 
         parts = []
         for _ in range(count):
@@ -34,6 +45,8 @@ class RespParser:
             if line[:1] != b"$":
                 raise ProtocolError(f"expected '$', got {line[:1]!r}")
             length = self._parse_length(line[1:])
+            if length > MAX_BULK_LENGTH:
+                raise ProtocolError("invalid bulk length")
             end = pos + length
             if len(self._buffer) < end + 2:
                 return None
@@ -51,6 +64,8 @@ class RespParser:
     def _read_line(self, pos):
         end = self._buffer.find(b"\r\n", pos)
         if end == -1:
+            if len(self._buffer) - pos > MAX_LINE_LENGTH:
+                raise ProtocolError("too big inline request")
             return None
         return bytes(self._buffer[pos:end]), end + 2
 
