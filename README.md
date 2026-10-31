@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml/badge.svg)](https://github.com/AndJunes/mini-redis/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/AndJunes/mini-redis)](LICENSE)
+![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)
 
 A Redis-compatible server written from scratch in Python, with no dependencies.
 It speaks [RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/),

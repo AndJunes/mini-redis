@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from mini_redis.persistence import read_commands
+from mini_redis.persistence import AppendOnlyFile, read_commands
 from mini_redis.resp import ProtocolError
 
 
@@ -123,6 +123,11 @@ def test_truncated_tail_is_ignored(aof_path, database, run, restart):
     assert run("GET", "name") == b"$6\r\nAndrea\r\n"
     run("SET", "age", "26")
     assert restart(aof_path) == (2, False)
+
+
+def test_unknown_fsync_policy_is_rejected(aof_path):
+    with pytest.raises(ValueError):
+        AppendOnlyFile(aof_path, fsync="sometimes")
 
 
 def test_corrupt_file_refuses_to_load(aof_path, database):
