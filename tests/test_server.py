@@ -3,6 +3,8 @@ import threading
 
 import pytest
 
+from mini_redis.main import parse_args
+
 
 @pytest.fixture
 def client(server_address):
@@ -65,6 +67,14 @@ def test_protocol_error_closes_the_connection(client):
     reply = client.recv(4096)
     assert reply.startswith(b"-ERR Protocol error")
     assert client.recv(4096) == b""
+
+
+def test_default_arguments():
+    args = parse_args([])
+    assert args.host == "localhost"
+    assert args.port == 6379
+    assert args.aof is None
+    assert args.appendfsync == "everysec"
 
 
 def test_concurrent_incr_over_tcp(server_address):
