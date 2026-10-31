@@ -1,0 +1,15 @@
+name: Feature request
+description: A command or behavior you'd like mini-redis to support
+labels: [enhancement]
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What would it let you do, or what part of Redis does it mirror?
