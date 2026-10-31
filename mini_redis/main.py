@@ -1,8 +1,11 @@
+"""TCP server and command-line entry point."""
+
 import argparse
 import logging
 import signal
 import socket
 import threading
+from types import FrameType
 
 from mini_redis.commands import Database
 from mini_redis.persistence import FSYNC_POLICIES
@@ -14,7 +17,7 @@ PORT = 6379
 logger = logging.getLogger(__name__)
 
 
-def handle_client(connection, database):
+def handle_client(connection: socket.socket, database: Database) -> None:
     parser = RespParser()
     with connection:
         try:
@@ -36,7 +39,8 @@ def handle_client(connection, database):
             pass
 
 
-def serve(server_socket, database):
+def serve(server_socket: socket.socket, database: Database) -> None:
+    """Accept clients until the listening socket is closed."""
     while True:
         try:
             connection, _ = server_socket.accept()
@@ -49,7 +53,7 @@ def serve(server_socket, database):
         thread.start()
 
 
-def parse_args(argv=None):
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="A Redis-compatible server.")
     parser.add_argument(
         "--host", default=HOST, help=f"interface to bind (default: {HOST})"
@@ -69,7 +73,7 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -84,7 +88,7 @@ def main(argv=None):
 
     # Closing the socket unblocks accept(), so serve() returns and the AOF
     # can be flushed before the process exits.
-    def shut_down(signum, frame):
+    def shut_down(signum: int, frame: FrameType | None) -> None:
         server_socket.close()
 
     signal.signal(signal.SIGINT, shut_down)

@@ -1,3 +1,6 @@
+"""Parser and encoders for RESP, the Redis serialization protocol."""
+
+
 class ProtocolError(Exception):
     pass
 
@@ -11,19 +14,21 @@ MAX_BULK_LENGTH = 512 * 1024 * 1024
 MAX_LINE_LENGTH = 64 * 1024
 
 
-# Buffers input, since a recv() can hold half a command or several of them.
 class RespParser:
-    def __init__(self):
+    """Buffers input, since a recv() can hold half a command or several of them."""
+
+    def __init__(self) -> None:
         self._buffer = bytearray()
 
-    def feed(self, data):
+    def feed(self, data: bytes) -> list[list[bytes]]:
+        """Add received bytes and return every command they complete."""
         self._buffer.extend(data)
         commands = []
         while (command := self._parse_command()) is not None:
             commands.append(command)
         return commands
 
-    def _parse_command(self):
+    def _parse_command(self) -> list[bytes] | None:
         header = self._read_line(0)
         if header is None:
             return None
@@ -58,10 +63,10 @@ class RespParser:
         del self._buffer[:pos]
         return parts
 
-    def has_pending_data(self):
+    def has_pending_data(self) -> bool:
         return bool(self._buffer)
 
-    def _read_line(self, pos):
+    def _read_line(self, pos: int) -> tuple[bytes, int] | None:
         end = self._buffer.find(b"\r\n", pos)
         if end == -1:
             if len(self._buffer) - pos > MAX_LINE_LENGTH:
@@ -70,7 +75,7 @@ class RespParser:
         return bytes(self._buffer[pos:end]), end + 2
 
     @staticmethod
-    def _parse_length(raw):
+    def _parse_length(raw: bytes) -> int:
         try:
             value = int(raw)
         except ValueError:
@@ -80,25 +85,25 @@ class RespParser:
         return value
 
 
-def encode_simple_string(value):
+def encode_simple_string(value: str) -> bytes:
     return b"+" + value.encode() + b"\r\n"
 
 
-def encode_error(message):
+def encode_error(message: str) -> bytes:
     return b"-" + message.encode() + b"\r\n"
 
 
-def encode_integer(value):
+def encode_integer(value: int) -> bytes:
     return b":" + str(value).encode() + b"\r\n"
 
 
-def encode_bulk_string(value):
+def encode_bulk_string(value: bytes | None) -> bytes:
     if value is None:
         return b"$-1\r\n"
     return b"$" + str(len(value)).encode() + b"\r\n" + value + b"\r\n"
 
 
-def encode_command(parts):
+def encode_command(parts: list[bytes]) -> bytes:
     return (
         b"*"
         + str(len(parts)).encode()
