@@ -99,8 +99,7 @@ uv run python benchmarks/compare.py
 - One thread per connection doesn't scale to thousands of clients.
 - The AOF is only compacted on startup, so it grows while the server runs.
 - The expiry sweeper scans every key with a TTL; Redis samples a few instead.
-- Small command set, no inline commands, no authentication. Listens on
-  localhost only.
+- Small command set, no inline commands, no authentication.
 
 ## Project structure
 

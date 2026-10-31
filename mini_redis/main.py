@@ -1,4 +1,5 @@
 import argparse
+import logging
 import signal
 import socket
 import threading
@@ -9,6 +10,8 @@ from mini_redis.resp import ProtocolError, RespParser, encode_error
 
 HOST = "localhost"
 PORT = 6379
+
+logger = logging.getLogger(__name__)
 
 
 def handle_client(connection, database):
@@ -49,6 +52,9 @@ def serve(server_socket, database):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="A Redis-compatible server.")
     parser.add_argument(
+        "--host", default=HOST, help=f"interface to bind (default: {HOST})"
+    )
+    parser.add_argument(
         "--port", type=int, default=PORT, help=f"port to listen on (default: {PORT})"
     )
     parser.add_argument(
@@ -65,13 +71,16 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
     database = Database()
     if args.aof:
         restored, truncated = database.enable_aof(args.aof, args.appendfsync)
         if truncated:
-            print(f"Ignored an incomplete command at the end of {args.aof}")
-        print(f"Restored {restored} keys from {args.aof}", flush=True)
-    server_socket = socket.create_server((HOST, args.port), reuse_port=True)
+            logger.warning("Ignored an incomplete command at the end of %s", args.aof)
+        logger.info("Restored %d keys from %s", restored, args.aof)
+    server_socket = socket.create_server((args.host, args.port))
 
     # Closing the socket unblocks accept(), so serve() returns and the AOF
     # can be flushed before the process exits.
@@ -82,7 +91,7 @@ def main(argv=None):
     signal.signal(signal.SIGTERM, shut_down)
 
     stop_sweeper = database.start_expiry_sweeper()
-    print(f"Listening on {HOST}:{args.port}", flush=True)
+    logger.info("Listening on %s:%d", args.host, args.port)
     serve(server_socket, database)
     stop_sweeper.set()
     database.disable_aof()
