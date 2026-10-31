@@ -1,0 +1,26 @@
+name: Bug report
+description: Something doesn't behave like it should, or differs from real Redis
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The commands you ran and the reply you got.
+      placeholder: |
+        redis-cli SET key value EX 10
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If real Redis answers differently, what does it answer?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python version and OS
+      placeholder: Python 3.14.6, macOS 15
